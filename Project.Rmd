@@ -1,0 +1,125 @@
+---
+title: "An Activity Classification Scheme Using The Random Forest Algorithm"
+author: "Niyas Madappattu Alikutty"
+date: "27 September 2015"
+output: html_document
+---
+A classification scheme is developed using the Random Forest algorithm of R to predict the Class of activity. 
+
+## Loading and Cleaning Data 
+Loading the Data obatined as Data and summary of the data was examined.   
+```{r}
+Data<-read.csv("pml-training.csv", header=T, sep="," )
+#unique(Data$num_window)
+Data<-Data[order(Data$num_window),]
+#summary(Data)
+```
+
+The Summary of the data indicates coloumns with more than 90% of the data missing from some coloumns. On closer examination of these coloumns and data indicates these are maximum, minimum, standard deviation, etc for each num_window. This data is also incomplete. 
+
+As more than 90% percent of the data is missing, these colloumns are dropped. These data can easil be recreated from the other coloumns of the data. 
+```{r}
+#Removing coloumns with NAs and black spaces, these are coloumns which are mean, max, var etc. 
+# these are coloumns that can be recreated from the Data3 
+Data[Data==" "] <- NA
+Data<-Data[, colSums(is.na(Data))<nrow(Data)*.7]
+Data<-Data[, colSums(Data=="")<nrow(Data)*.7]
+#summary(Data)
+Data3<-Data[,-c(1:7)]
+names(Data3)
+```
+
+### Training and Testing Data set
+
+A training and testing data set is created with 60% of the data randomly selected from the Data3, the rest are used for testing. 
+```{r}
+#creating training and testing data set...
+set.seed(1)
+train=sample(1:nrow(Data3), nrow(Data3)*.6)
+training<-Data3[train,]
+testing<-Data3[-train,]
+```
+
+#Exploring the data 
+```{r}
+library(ggplot2)
+p=ggplot(training)
+p=p+geom_density(aes(x=roll_belt,fill=classe), alpha=0.1)
+p=p+xlab('roll_belt')
+p=p+ylab('Density')
+p=p+ggtitle('Class Prediction')
+p
+```
+
+While expoloring the data using various plots using predictors, it clear any other classification scheme will be difficult due to large number of predictors involved (52). So, the Random Forest algoirthm is used for this classification.Here, doParallel is used to multiple core available in the system. 
+
+### Random Forest in Parallel 
+doParallel package is used run randomForest in parallel process. The Random Forest algorithm are ideal for handling data with high dimensions. The Number of trees created are 900.  
+```{r}
+library(doParallel)# Parallelising using doParallel package for any 
+library(randomForest)
+cl <- makeCluster(3)# Using 3 Cores
+registerDoParallel(cl)
+set.seed(1)
+x<-training[-ncol(training)]
+y<-training$classe
+rf.exercise <- foreach(ntree=rep(150,6), .combine=randomForest::combine,.packages='randomForest') %dopar% {
+  randomForest(x,y, ntree=ntree, importance = T)
+}
+stopCluster(cl)
+print(rf.exercise)
+```
+
+### Variable importance and Accuracy Measurment
+
+```{r}
+ rf.imp<-importance(rf.exercise)
+ rf.imp[order(rf.imp[,6], decreasing=T),][1:15,]#15 predictors with importance
+```
+
+The confusion matrix is used to obtain the accuracy of the prediction. The predict function is used to make prediction on the testing dataset. The accuracy using the confusion matrix gives more than 99% accuracy and 95% confidence interval is within 99% accuracy. 
+```{r cache=TRUE}
+#confusion matrix
+library(MASS)
+library(caret)
+ #testing data set
+Predicttrain<-predict(rf.exercise, newdata=training)
+confusionMatrix(Predicttrain, training$classe)
+
+#testing data set
+Prediction<-predict(rf.exercise, newdata=testing)
+confusionMatrix(Prediction, testing$classe)
+varImpPlot(rf.exercise, n.var=12, bg="red", main="Variable Importance")
+```
+
+### Testing with external data set
+```{r}
+Data_finaltest<-read.csv("pml-testing.csv", header=T, sep="," )
+#Data_finaltest<-Data_finaltest[order(Data_finaltest$num_window),]
+#Removing coloumns with NAs and black spaces, these are coloumns which are mean, max, var etc. 
+# these are coloumns that can be recreated from the Data3 
+Data_finaltest[Data_finaltest==" "] <- NA
+Data_finaltest<-Data_finaltest[, colSums(is.na(Data_finaltest))<nrow(Data_finaltest)*.7]
+Data_finaltest<-Data_finaltest[, colSums(Data_finaltest=="")<nrow(Data_finaltest)*.7]
+#summary(Data)
+Data3_finaltest<-Data_finaltest[,-c(1:7)]
+Prediction<-predict(rf.exercise, newdata=Data3_finaltest)
+Prediction
+```
+
+```{r}
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(Prediction)
+```
+
+
+### Conclusion
+
+A classification scheme was developed to predict the class of activity the participant is performing. The classification scheme predicts the activity on the testing set with more than 99% accurarcy. 
