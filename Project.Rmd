@@ -15,12 +15,12 @@ Data<-Data[order(Data$num_window),]
 #summary(Data)
 ```
 
-The Summary of the data indicates coloumns with more than 90% of the data missing from some coloumns. On closer examination of these coloumns and data indicates these are maximum, minimum, standard deviation, etc for each num_window. This data is also incomplete. 
+The Summary of the data indicates columns with more than 90% of the data missing from some columns. On closer examination of these columns and data indicates these are maximum, minimum, standard deviation, etc for each num_window. This data is also incomplete. 
 
-As more than 90% percent of the data is missing, these colloumns are dropped. These data can easil be recreated from the other coloumns of the data. 
+As more than 90% percent of the data is missing, these colloumns are dropped. These data can easil be recreated from the other columns of the data. 
 ```{r}
-#Removing coloumns with NAs and black spaces, these are coloumns which are mean, max, var etc. 
-# these are coloumns that can be recreated from the Data3 
+#Removing columns with NAs and black spaces, these are columns which are mean, max, var etc. 
+# these are columns that can be recreated from the Data3 
 Data[Data==" "] <- NA
 Data<-Data[, colSums(is.na(Data))<nrow(Data)*.7]
 Data<-Data[, colSums(Data=="")<nrow(Data)*.7]
@@ -96,8 +96,8 @@ varImpPlot(rf.exercise, n.var=12, bg="red", main="Variable Importance")
 ```{r}
 Data_finaltest<-read.csv("pml-testing.csv", header=T, sep="," )
 #Data_finaltest<-Data_finaltest[order(Data_finaltest$num_window),]
-#Removing coloumns with NAs and black spaces, these are coloumns which are mean, max, var etc. 
-# these are coloumns that can be recreated from the Data3 
+#Removing columns with NAs and black spaces, these are columns which are mean, max, var etc. 
+# these are columns that can be recreated from the Data3 
 Data_finaltest[Data_finaltest==" "] <- NA
 Data_finaltest<-Data_finaltest[, colSums(is.na(Data_finaltest))<nrow(Data_finaltest)*.7]
 Data_finaltest<-Data_finaltest[, colSums(Data_finaltest=="")<nrow(Data_finaltest)*.7]
